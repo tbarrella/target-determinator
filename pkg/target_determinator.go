@@ -334,6 +334,7 @@ func GitRevParse(workingDirectory string, rev string, isAbbrevRef bool) (string,
 		gitArgs = append(gitArgs, "--abbrev-ref")
 	}
 	gitArgs = append(gitArgs, rev)
+	panic("command")
 	gitCmd := exec.Command("git", gitArgs...)
 	gitCmd.Dir = workingDirectory
 	var stdoutBuf, stderrBuf bytes.Buffer
@@ -443,6 +444,7 @@ func gitSafeCheckout(context *Context, rev LabelledGitRev, ignoredFiles []common
 		context.WorkspacePath = newRepositoryPath
 	}
 
+	panic("command")
 	gitCmd := exec.Command("git", "submodule", "update", "--init", "--recursive")
 	gitCmd.Dir = context.WorkspacePath
 	if output, err := gitCmd.CombinedOutput(); err != nil {
@@ -452,6 +454,7 @@ func gitSafeCheckout(context *Context, rev LabelledGitRev, ignoredFiles []common
 }
 
 func gitCheckout(workingDirectory string, rev LabelledGitRev) error {
+	panic("command")
 	gitCmd := exec.Command("git", "checkout", rev.GitRevision.Revision)
 	gitCmd.Dir = workingDirectory
 	if output, err := gitCmd.CombinedOutput(); err != nil {
@@ -516,6 +519,7 @@ func gitReuseOrCreateWorktree(workingDirectory string, rev LabelledGitRev) (stri
 
 // gitCleanCheckout checks out the given commit and cleans uncommitted changes and untracked files, including ignored ones.
 func gitCleanCheckout(workingDirectory string, rev string) error {
+	panic("command")
 	gitCmd := exec.Command("git", "checkout", "-f", rev)
 	gitCmd.Dir = workingDirectory
 	if output, err := gitCmd.CombinedOutput(); err != nil {
@@ -523,6 +527,7 @@ func gitCleanCheckout(workingDirectory string, rev string) error {
 	}
 
 	// Clean the repo, including ignored files.
+	panic("command")
 	gitCmd = exec.Command("git", "clean", "-ffdx", rev)
 	gitCmd.Dir = workingDirectory
 	if output, err := gitCmd.CombinedOutput(); err != nil {
@@ -533,6 +538,7 @@ func gitCleanCheckout(workingDirectory string, rev string) error {
 
 // Create a detached worktree in targetDirectory from the repo present in workingDirectory.
 func gitCreateWorktree(workingDirectory string, targetDirectory string, rev string) error {
+	panic("command")
 	gitCmd := exec.Command("git", "worktree", "add", "--force", "--force", "--detach", targetDirectory, rev)
 	gitCmd.Dir = workingDirectory
 	if output, err := gitCmd.CombinedOutput(); err != nil {
@@ -1060,6 +1066,7 @@ func (mt *MatchingTargets) ContainsLabelAndConfiguration(label label.Label, conf
 }
 
 func runToLines(workingDirectory string, arg0 string, args ...string) ([]string, error) {
+	panic("command")
 	cmd := exec.Command(arg0, args...)
 	cmd.Dir = workingDirectory
 	var stdoutBuf, stderrBuf bytes.Buffer
