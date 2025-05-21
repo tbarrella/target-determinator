@@ -23,6 +23,17 @@ func queryFromFile(path string) (*QueryResults, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to deserialize before: %w", err)
 	}
+
+	/*
+		test, err := json.MarshalIndent(&res, "", "  ")
+		if err != nil {
+			return nil, fmt.Errorf("test err: %w", err)
+		}
+		if string(data) != string(test) {
+			fmt.Println(string(test))
+			return nil, fmt.Errorf("diff!")
+		}
+	*/
 	return &res, nil
 }
 

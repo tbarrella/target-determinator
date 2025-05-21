@@ -555,16 +555,29 @@ var _ json.Marshaler = &QueryResults{}
 var _ json.Unmarshaler = &QueryResults{}
 
 type QueryResultsSerializable struct {
-	BazelRelease     string `json:"bazelRelease"`
-	*MatchingTargets `json:"matchingTargets"`
-	*TargetHashCache `json:"targetHashCache"`
+	BazelRelease                string `json:"bazelRelease"`
+	*MatchingTargets            `json:"matchingTargets"`
+	*TargetHashCache            `json:"targetHashCache"`
+	TransitiveConfiguredTargets map[string][]Configuration `json:"transitiveConfiguredTargets"`
 }
 
 func (queryInfo *QueryResults) MarshalJSON() ([]byte, error) {
+	TransitiveConfiguredTargets := make(map[string][]Configuration, len(queryInfo.TransitiveConfiguredTargets))
+	for l, cs := range queryInfo.TransitiveConfiguredTargets {
+		configurations := make([]Configuration, 0, len(cs))
+		for c := range cs {
+			configurations = append(configurations, c)
+		}
+		sort.Slice(configurations, func(i, j int) bool {
+			return ConfigurationLess(configurations[i], configurations[j])
+		})
+		TransitiveConfiguredTargets[l.String()] = configurations
+	}
 	s := QueryResultsSerializable{
 		queryInfo.BazelRelease,
 		queryInfo.MatchingTargets,
 		queryInfo.TargetHashCache,
+		TransitiveConfiguredTargets,
 	}
 	return json.Marshal(s)
 }
@@ -574,10 +587,23 @@ func (queryInfo *QueryResults) UnmarshalJSON(b []byte) error {
 	if err := json.Unmarshal(b, &q); err != nil {
 		return err
 	}
+	tct := make(map[label.Label]map[Configuration]*analysis.ConfiguredTarget, len(q.TransitiveConfiguredTargets))
+	for l, cs := range q.TransitiveConfiguredTargets {
+		label, err := label.Parse(l)
+		if err != nil {
+			return err
+		}
+		configurations := make(map[Configuration]*analysis.ConfiguredTarget, len(cs))
+		for _, c := range cs {
+			configurations[c] = nil
+		}
+		tct[label] = configurations
+	}
 	queryInfo.BazelRelease = q.BazelRelease
 	queryInfo.MatchingTargets = q.MatchingTargets
 	queryInfo.TargetHashCache = NewTargetHashCache(nil, nil, q.BazelRelease)
 	queryInfo.TargetHashCache.cache = q.TargetHashCache.cache
+	queryInfo.TransitiveConfiguredTargets = tct
 	return nil
 }
 
