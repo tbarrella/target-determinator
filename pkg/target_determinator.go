@@ -139,6 +139,9 @@ type Context struct {
 	// EnforceCleanRepo controls whether we should fail if the repository is unclean.
 	EnforceCleanRepo bool
 	QuerySingle      string
+	DiffOnly         bool
+	BeforePath       string
+	AfterPath        string
 }
 
 func QuerySingle(context *Context, targets TargetsList) error {
@@ -548,14 +551,34 @@ type QueryResults struct {
 	configurations map[Configuration]singleConfigurationOutput
 }
 
+var _ json.Marshaler = &QueryResults{}
+var _ json.Unmarshaler = &QueryResults{}
+
 type QueryResultsSerializable struct {
+	BazelRelease     string `json:"bazelRelease"`
 	*MatchingTargets `json:"matchingTargets"`
 	*TargetHashCache `json:"targetHashCache"`
 }
 
 func (queryInfo *QueryResults) MarshalJSON() ([]byte, error) {
-	s := QueryResultsSerializable{queryInfo.MatchingTargets, queryInfo.TargetHashCache}
+	s := QueryResultsSerializable{
+		queryInfo.BazelRelease,
+		queryInfo.MatchingTargets,
+		queryInfo.TargetHashCache,
+	}
 	return json.Marshal(s)
+}
+
+func (queryInfo *QueryResults) UnmarshalJSON(b []byte) error {
+	var q QueryResultsSerializable
+	if err := json.Unmarshal(b, &q); err != nil {
+		return err
+	}
+	queryInfo.BazelRelease = q.BazelRelease
+	queryInfo.MatchingTargets = q.MatchingTargets
+	queryInfo.TargetHashCache = NewTargetHashCache(nil, nil, q.BazelRelease)
+	queryInfo.TargetHashCache.cache = q.TargetHashCache.cache
+	return nil
 }
 
 func (queryInfo *QueryResults) PrefillCache() error {
@@ -964,12 +987,34 @@ type MatchingTargets struct {
 	labelsToConfigurations map[label.Label]*ss.SortedSet[Configuration]
 }
 
+var _ json.Marshaler = &MatchingTargets{}
+var _ json.Unmarshaler = &MatchingTargets{}
+
 func (mt *MatchingTargets) MarshalJSON() ([]byte, error) {
-	m := make(map[string][]Configuration, len(mt.labelsToConfigurations))
+	m := make(map[string]*ss.SortedSet[Configuration], len(mt.labelsToConfigurations))
 	for l, c := range mt.labelsToConfigurations {
-		m[l.String()] = c.SortedSlice()
+		m[l.String()] = c
 	}
 	return json.Marshal(m)
+}
+
+func (mt *MatchingTargets) UnmarshalJSON(b []byte) error {
+	m := make(map[string][]Configuration)
+	if err := json.Unmarshal(b, &m); err != nil {
+		return fmt.Errorf("can't unmarshal into MatchingTargets: %w", err)
+	}
+	labels := make([]label.Label, 0, len(m))
+	mt.labelsToConfigurations = make(map[label.Label]*ss.SortedSet[Configuration], len(m))
+	for l, c := range m {
+		label, err := label.Parse(l)
+		if err != nil {
+			return err
+		}
+		labels = append(labels, label)
+		mt.labelsToConfigurations[label] = ss.NewSortedSetFn(c, ConfigurationLess)
+	}
+	mt.labels = ss.NewSortedSetFn(labels, CompareLabels)
+	return nil
 }
 
 func (mt *MatchingTargets) Labels() []label.Label {

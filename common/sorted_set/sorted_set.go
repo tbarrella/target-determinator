@@ -1,12 +1,19 @@
 package sorted_set
 
 import (
+	"encoding/json"
+
 	"github.com/google/btree"
 )
 
 // SortedSet is a Set whose elements are traversable in sorted ordered.
 type SortedSet[T any] struct {
 	tree *btree.BTreeG[T]
+}
+
+func (s *SortedSet[T]) MarshalJSON() ([]byte, error) {
+	slice := s.SortedSlice()
+	return json.Marshal(slice)
 }
 
 const degree int = 2

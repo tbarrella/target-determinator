@@ -2,6 +2,7 @@ package pkg
 
 import (
 	"bytes"
+	"encoding"
 	"encoding/json"
 	"fmt"
 
@@ -11,6 +12,9 @@ import (
 type Configuration struct {
 	inner string
 }
+
+var _ encoding.TextMarshaler = &Configuration{}
+var _ encoding.TextUnmarshaler = &Configuration{}
 
 func NormalizeConfiguration(c string) Configuration {
 	if c == "null" {
@@ -25,6 +29,11 @@ func NormalizeConfiguration(c string) Configuration {
 
 func (c *Configuration) MarshalText() ([]byte, error) {
 	return c.ForHashing(), nil
+}
+
+func (c *Configuration) UnmarshalText(text []byte) error {
+	c.inner = string(text)
+	return nil
 }
 
 func (c *Configuration) String() string {

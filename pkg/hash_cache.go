@@ -77,6 +77,9 @@ type TargetHashCache struct {
 	cache     map[gazelle_label.Label]map[Configuration]*cacheEntry
 }
 
+var _ json.Marshaler = &TargetHashCache{}
+var _ json.Unmarshaler = &TargetHashCache{}
+
 func (thc *TargetHashCache) MarshalJSON() ([]byte, error) {
 	thc.cacheLock.Lock()
 	defer thc.cacheLock.Unlock()
@@ -89,6 +92,24 @@ func (thc *TargetHashCache) MarshalJSON() ([]byte, error) {
 		m[l.String()] = cp
 	}
 	return json.Marshal(m)
+}
+
+func (thc *TargetHashCache) UnmarshalJSON(b []byte) error {
+	var m map[string]map[Configuration]*cacheEntry
+	if err := json.Unmarshal(b, &m); err != nil {
+		return fmt.Errorf("can't unmarshal into TargetHashCache: %w", err)
+	}
+	thc.cacheLock.Lock()
+	defer thc.cacheLock.Unlock()
+	thc.cache = make(map[gazelle_label.Label]map[Configuration]*cacheEntry, len(m))
+	for label, confEnts := range m {
+		l, err := gazelle_label.Parse(label)
+		if err != nil {
+			return fmt.Errorf("can't parse label: %w", err)
+		}
+		thc.cache[l] = confEnts
+	}
+	return nil
 }
 
 var labelNotFound = fmt.Errorf("label not found in context")
@@ -659,10 +680,22 @@ type cacheEntry struct {
 	hash     []byte
 }
 
+var _ json.Marshaler = &cacheEntry{}
+var _ json.Unmarshaler = &cacheEntry{}
+
 func (c *cacheEntry) MarshalJSON() ([]byte, error) {
 	c.hashLock.Lock()
 	defer c.hashLock.Unlock()
 	return json.Marshal(c.hash)
+}
+
+func (c *cacheEntry) UnmarshalJSON(b []byte) error {
+	c.hashLock.Lock()
+	defer c.hashLock.Unlock()
+	if err := json.Unmarshal(b, &c.hash); err != nil {
+		return fmt.Errorf("can't unmarshal into cacheEntry: %w", err)
+	}
+	return nil
 }
 
 // Hash computes the digest of the contents of a file at the given path, and caches the result.

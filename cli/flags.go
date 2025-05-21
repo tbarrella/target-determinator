@@ -80,6 +80,9 @@ type CommonFlags struct {
 	CompareQueriesAroundAnalysisCacheClear bool
 	FilterIncompatibleTargets              bool
 	QuerySingle                            *string
+	DiffOnly                               bool
+	BeforePath                             *string
+	AfterPath                              *string
 }
 
 func StrPtr() *string {
@@ -103,6 +106,9 @@ func RegisterCommonFlags() *CommonFlags {
 		CompareQueriesAroundAnalysisCacheClear: false,
 		FilterIncompatibleTargets:              true,
 		QuerySingle:                            StrPtr(),
+		DiffOnly:                               false,
+		BeforePath:                             StrPtr(),
+		AfterPath:                              StrPtr(),
 	}
 	flag.BoolVar(&commonFlags.Version, "version", false, "Print the version of the tool and exit.")
 	flag.StringVar(commonFlags.WorkingDirectory, "working-directory", ".", "Working directory to query.")
@@ -124,6 +130,9 @@ func RegisterCommonFlags() *CommonFlags {
 	flag.BoolVar(&commonFlags.CompareQueriesAroundAnalysisCacheClear, "compare-queries-around-analysis-cache-clear", false, "Whether to check for query result differences before and after analysis cache clears. This is a temporary flag for performing real-world analysis.")
 	flag.BoolVar(&commonFlags.FilterIncompatibleTargets, "filter-incompatible-targets", true, "Whether to filter out incompatible targets from the candidate set of affected targets.")
 	flag.StringVar(commonFlags.QuerySingle, "query-output", "", "Query only and output the results to the given path")
+	flag.BoolVar(&commonFlags.DiffOnly, "diff-only", false, "Diff only")
+	flag.StringVar(commonFlags.BeforePath, "before", "", "Path to query JSON before")
+	flag.StringVar(commonFlags.AfterPath, "after", "", "Path to query JSON after")
 	return &commonFlags
 }
 
@@ -191,6 +200,9 @@ func ResolveCommonConfig(commonFlags *CommonFlags, beforeRevStr string) (*Common
 		FilterIncompatibleTargets:              commonFlags.FilterIncompatibleTargets,
 		EnforceCleanRepo:                       commonFlags.EnforceCleanRepo == EnforceClean,
 		QuerySingle:                            *commonFlags.QuerySingle,
+		DiffOnly:                               commonFlags.DiffOnly,
+		BeforePath:                             *commonFlags.BeforePath,
+		AfterPath:                              *commonFlags.AfterPath,
 	}
 
 	// Non-context attributes

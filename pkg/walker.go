@@ -2,14 +2,52 @@ package pkg
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/bazel-contrib/target-determinator/third_party/protobuf/bazel/analysis"
 	"github.com/bazelbuild/bazel-gazelle/label"
 )
 
 type WalkCallback func(label.Label, []Difference, *analysis.ConfiguredTarget)
+
+func queryFromFile(path string) (*QueryResults, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read query file: %w", err)
+	}
+	var res QueryResults
+	err = json.Unmarshal(data, &res)
+	if err != nil {
+		return nil, fmt.Errorf("failed to deserialize before: %w", err)
+	}
+	return &res, nil
+}
+
+func DiffFromJSON(context *Context, beforeFile, afterFile string, targets TargetsList, includeDifferences bool, callback WalkCallback) error {
+	beforeMetadata, err := queryFromFile(beforeFile)
+	if err != nil {
+		return fmt.Errorf("failed to deserialize before: %w", err)
+	}
+	afterMetadata, err := queryFromFile(afterFile)
+	if err != nil {
+		return fmt.Errorf("failed to deserialize after: %w", err)
+	}
+
+	if beforeMetadata.BazelRelease == afterMetadata.BazelRelease && beforeMetadata.BazelRelease == "development version" {
+		log.Printf("WARN: Bazel was detected to be a development version - if you're using different development versions at the before and after commits, differences between those versions may not be reflected in this output")
+	}
+
+	for _, l := range afterMetadata.MatchingTargets.Labels() {
+		if err := DiffSingleLabel(beforeMetadata, afterMetadata, includeDifferences, l, callback); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
 
 // WalkAffectedTargets computes which targets have changed between two commits, and calls
 // callback once for each target which has changed.

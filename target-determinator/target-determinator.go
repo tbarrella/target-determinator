@@ -85,6 +85,19 @@ func main() {
 		return
 	}
 
+	if config.Context.DiffOnly {
+		if err := pkg.DiffFromJSON(config.Context,
+			config.Context.BeforePath,
+			config.Context.AfterPath,
+			config.Targets,
+			config.Verbose,
+			callback); err != nil {
+			fmt.Println("Target Determinator invocation Error")
+			log.Fatal(err)
+		}
+		return
+	}
+
 	if err := pkg.WalkAffectedTargets(config.Context,
 		config.RevisionBefore,
 		config.Targets,
@@ -104,7 +117,7 @@ func parseFlags() (*targetDeterminatorFlags, error) {
 	flag.Parse()
 
 	var err error
-	if *flags.commonFlags.QuerySingle == "" {
+	if *flags.commonFlags.QuerySingle == "" && !flags.commonFlags.DiffOnly {
 		flags.revisionBefore, err = cli.ValidateCommonFlags("target-determinator", flags.commonFlags)
 		if err != nil {
 			return nil, err
