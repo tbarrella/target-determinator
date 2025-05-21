@@ -138,6 +138,33 @@ type Context struct {
 	FilterIncompatibleTargets bool
 	// EnforceCleanRepo controls whether we should fail if the repository is unclean.
 	EnforceCleanRepo bool
+	QuerySingle      string
+}
+
+func QuerySingle(context *Context, targets TargetsList) error {
+	queryInfo, err := querySingle(context, targets)
+	j, err := json.MarshalIndent(queryInfo, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal query: %w", err)
+	}
+	fmt.Println(string(j))
+	os.WriteFile(context.QuerySingle, j, 0644)
+	return nil
+}
+
+func querySingle(context *Context, targets TargetsList) (*QueryResults, error) {
+	var rev LabelledGitRev
+	queryInfo, loadMetadataCleanup, err := LoadIncompleteMetadata(context, rev, targets)
+	defer loadMetadataCleanup()
+	if err != nil {
+		return queryInfo, fmt.Errorf("failed to load metadata: %w", err)
+	}
+
+	log.Println("Hashing targets")
+	if err := queryInfo.PrefillCache(); err != nil {
+		return nil, fmt.Errorf("failed to calculate hashes: %w", err)
+	}
+	return queryInfo, nil
 }
 
 // FullyProcess returns the before and after metadata maps, with fully filled caches.
@@ -219,7 +246,7 @@ func LoadIncompleteMetadata(context *Context, rev LabelledGitRev, targets Target
 	}
 	cleanupFunc := func() {}
 
-	if rev.GitRevision != CurrentWorkingDirState {
+	if context.QuerySingle == "" && rev.GitRevision != CurrentWorkingDirState {
 		// This may return a new workspace path to ensure we don't destroy any local data.
 		newWorkspacePath, err2 := gitSafeCheckout(context, rev, context.IgnoredFiles)
 
@@ -519,6 +546,16 @@ type QueryResults struct {
 	// QueryError is whatever error was returned when running the cquery to get these results.
 	QueryError     error
 	configurations map[Configuration]singleConfigurationOutput
+}
+
+type QueryResultsSerializable struct {
+	*MatchingTargets `json:"matchingTargets"`
+	*TargetHashCache `json:"targetHashCache"`
+}
+
+func (queryInfo *QueryResults) MarshalJSON() ([]byte, error) {
+	s := QueryResultsSerializable{queryInfo.MatchingTargets, queryInfo.TargetHashCache}
+	return json.Marshal(s)
 }
 
 func (queryInfo *QueryResults) PrefillCache() error {
@@ -925,6 +962,14 @@ func addCompatibleTargetsLines(r io.Reader, compatibleTargets map[label.Label]bo
 type MatchingTargets struct {
 	labels                 *ss.SortedSet[label.Label]
 	labelsToConfigurations map[label.Label]*ss.SortedSet[Configuration]
+}
+
+func (mt *MatchingTargets) MarshalJSON() ([]byte, error) {
+	m := make(map[string][]Configuration, len(mt.labelsToConfigurations))
+	for l, c := range mt.labelsToConfigurations {
+		m[l.String()] = c.SortedSlice()
+	}
+	return json.Marshal(m)
 }
 
 func (mt *MatchingTargets) Labels() []label.Label {

@@ -77,6 +77,14 @@ func main() {
 		seenLabels[label] = struct{}{}
 	}
 
+	if config.Context.QuerySingle != "" {
+		if err := pkg.QuerySingle(config.Context, config.Targets); err != nil {
+			fmt.Println("Target Determinator invocation Error")
+			log.Fatal(err)
+		}
+		return
+	}
+
 	if err := pkg.WalkAffectedTargets(config.Context,
 		config.RevisionBefore,
 		config.Targets,
@@ -96,9 +104,11 @@ func parseFlags() (*targetDeterminatorFlags, error) {
 	flag.Parse()
 
 	var err error
-	flags.revisionBefore, err = cli.ValidateCommonFlags("target-determinator", flags.commonFlags)
-	if err != nil {
-		return nil, err
+	if *flags.commonFlags.QuerySingle == "" {
+		flags.revisionBefore, err = cli.ValidateCommonFlags("target-determinator", flags.commonFlags)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return &flags, nil
 }

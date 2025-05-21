@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/binary"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -74,6 +75,20 @@ type TargetHashCache struct {
 
 	cacheLock sync.Mutex
 	cache     map[gazelle_label.Label]map[Configuration]*cacheEntry
+}
+
+func (thc *TargetHashCache) MarshalJSON() ([]byte, error) {
+	thc.cacheLock.Lock()
+	defer thc.cacheLock.Unlock()
+	m := make(map[string]map[*Configuration]*cacheEntry, len(thc.cache))
+	for l, confEnts := range thc.cache {
+		cp := make(map[*Configuration]*cacheEntry, len(confEnts))
+		for c, e := range confEnts {
+			cp[&c] = e
+		}
+		m[l.String()] = cp
+	}
+	return json.Marshal(m)
 }
 
 var labelNotFound = fmt.Errorf("label not found in context")
@@ -642,6 +657,12 @@ type fileHashCache struct {
 type cacheEntry struct {
 	hashLock sync.Mutex
 	hash     []byte
+}
+
+func (c *cacheEntry) MarshalJSON() ([]byte, error) {
+	c.hashLock.Lock()
+	defer c.hashLock.Unlock()
+	return json.Marshal(c.hash)
 }
 
 // Hash computes the digest of the contents of a file at the given path, and caches the result.

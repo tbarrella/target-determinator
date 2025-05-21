@@ -23,6 +23,10 @@ func NormalizeConfiguration(c string) Configuration {
 	}
 }
 
+func (c *Configuration) MarshalText() ([]byte, error) {
+	return c.ForHashing(), nil
+}
+
 func (c *Configuration) String() string {
 	return c.inner
 }
