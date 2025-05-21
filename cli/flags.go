@@ -166,14 +166,17 @@ func ResolveCommonConfig(commonFlags *CommonFlags, beforeRevStr string) (*Common
 		return nil, fmt.Errorf("failed to get working directory from %v: %w", *commonFlags.WorkingDirectory, err)
 	}
 
-	currentBranch, err := pkg.GitRevParse(workingDirectory, "HEAD", true)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get current git revision: %w", err)
-	}
+	var afterRev pkg.LabelledGitRev
+	if *commonFlags.QuerySingle == "" && !commonFlags.DiffOnly {
+		currentBranch, err := pkg.GitRevParse(workingDirectory, "HEAD", true)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get current git revision: %w", err)
+		}
 
-	afterRev, err := pkg.NewLabelledGitRev(workingDirectory, currentBranch, "after")
-	if err != nil {
-		return nil, fmt.Errorf("failed to resolve the \"after\" (i.e. original) git revision: %w", err)
+		afterRev, err = pkg.NewLabelledGitRev(workingDirectory, currentBranch, "after")
+		if err != nil {
+			return nil, fmt.Errorf("failed to resolve the \"after\" (i.e. original) git revision: %w", err)
+		}
 	}
 
 	bazelCmd := pkg.DefaultBazelCmd{
