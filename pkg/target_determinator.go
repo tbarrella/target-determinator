@@ -146,11 +146,14 @@ type Context struct {
 
 func QuerySingle(context *Context, targets TargetsList) error {
 	queryInfo, err := querySingle(context, targets)
+	if err != nil {
+		return fmt.Errorf("failed to query: %w", err)
+	}
 	j, err := json.MarshalIndent(queryInfo, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to marshal query: %w", err)
 	}
-	fmt.Println(string(j))
+	// fmt.Println(string(j))
 	os.WriteFile(context.QuerySingle, j, 0644)
 	return nil
 }

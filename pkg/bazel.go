@@ -41,7 +41,7 @@ var _buildLikeCommands = map[string]struct{}{
 func (c DefaultBazelCmd) Execute(config BazelCmdConfig, startupArgs []string, command string, args ...string) (int, error) {
 	bazelArgv := make([]string, 0, len(c.BazelStartupOpts)+len(args))
 	bazelArgv = append(bazelArgv, c.BazelStartupOpts...)
-	bazelArgv = append(bazelArgv, startupArgs...)
+	// bazelArgv = append(bazelArgv, startupArgs...)
 	bazelArgv = append(bazelArgv, command)
 	if _, ok := _buildLikeCommands[command]; ok {
 		bazelArgv = append(bazelArgv, c.BazelOpts...)
